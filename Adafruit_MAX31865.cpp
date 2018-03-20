@@ -33,13 +33,27 @@ Adafruit_MAX31865::Adafruit_MAX31865(int8_t spi_cs, int8_t spi_mosi, int8_t spi_
   _cs = spi_cs;
   _miso = spi_miso;
   _mosi = spi_mosi;
+  _rdy = -1;
+}
 
+Adafruit_MAX31865::Adafruit_MAX31865(int8_t spi_cs, int8_t spi_mosi, int8_t spi_miso, int8_t spi_clk, int8_t ready) {
+  _sclk = spi_clk;
+  _cs = spi_cs;
+  _miso = spi_miso;
+  _mosi = spi_mosi;
+  _rdy = ready;
 }
 
 // Hardware SPI init
 Adafruit_MAX31865::Adafruit_MAX31865(int8_t spi_cs) {
   _cs = spi_cs;
+  _sclk = _miso = _mosi = _rdy = -1;
+}
+
+Adafruit_MAX31865::Adafruit_MAX31865(int8_t spi_cs, int8_t ready) {
+  _cs = spi_cs;
   _sclk = _miso = _mosi = -1;
+  _rdy = ready;
 }
 
 boolean Adafruit_MAX31865::begin(max31865_numwires_t wires) {
@@ -55,7 +69,11 @@ boolean Adafruit_MAX31865::begin(max31865_numwires_t wires) {
   } else {
     //start and configure hardware SPI
     SPI.begin();
-  }  
+  }
+
+  if (_rdy != -1) {
+    pinMode(_rdy, INPUT);
+  }
 
   for (uint8_t i=0; i<16; i++) {
     // readRegister8(i);
@@ -107,8 +125,11 @@ void Adafruit_MAX31865::autoConvert(boolean b) {
   uint8_t t = readRegister8(MAX31856_CONFIG_REG);
   if (b) {
     t |= MAX31856_CONFIG_MODEAUTO;       // enable autoconvert
+    _isauto = true;
+    enableBias(true);
   } else {
     t &= ~MAX31856_CONFIG_MODEAUTO;       // disable autoconvert
+    _isauto = false;
   }
   writeRegister8(MAX31856_CONFIG_REG, t);
 }
@@ -167,12 +188,21 @@ float  Adafruit_MAX31865::temperature(float RTDnominal, float refResistor) {
 
 uint16_t Adafruit_MAX31865::readRTD (void) {
   clearFault();
-  enableBias(true);
-  delay(10);
-  uint8_t t = readRegister8(MAX31856_CONFIG_REG);
-  t |= MAX31856_CONFIG_1SHOT;      
-  writeRegister8(MAX31856_CONFIG_REG, t);
-  delay(65);
+  if (!_isauto) {
+    enableBias(true);
+    delay(10);
+    uint8_t t = readRegister8(MAX31856_CONFIG_REG);
+    t |= MAX31856_CONFIG_1SHOT;
+    writeRegister8(MAX31856_CONFIG_REG, t);
+
+    if (_rdy == -1) {
+      delay(65);
+    }
+  }
+
+  if (_rdy != -1) {
+    while (digitalRead(_rdy) == HIGH) {}
+  }
 
   uint16_t rtd = readRegister16(MAX31856_RTDMSB_REG);
 
