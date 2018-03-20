@@ -65,6 +65,8 @@ class Adafruit_MAX31865 {
  public:
   Adafruit_MAX31865(int8_t spi_cs, int8_t spi_mosi, int8_t spi_miso, int8_t spi_clk);
   Adafruit_MAX31865(int8_t spi_cs);
+  Adafruit_MAX31865(int8_t spi_cs, int8_t spi_mosi, int8_t spi_miso, int8_t spi_clk, int8_t ready);
+  Adafruit_MAX31865(int8_t spi_cs, int8_t ready);
 
   boolean begin(max31865_numwires_t x = MAX31865_2WIRE);
 
@@ -80,7 +82,8 @@ class Adafruit_MAX31865 {
   float temperature(float RTDnominal, float refResistor);
 
  private:
-  int8_t _sclk, _miso, _mosi, _cs;
+  int8_t _sclk, _miso, _mosi, _cs, _rdy;
+  bool _isauto;
 
   void readRegisterN(uint8_t addr, uint8_t buffer[], uint8_t n);
 
